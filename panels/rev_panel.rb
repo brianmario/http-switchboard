@@ -61,10 +61,6 @@ class BrowserRequest < Rev::TCPSocket
   def on_close
     LOGGER.info "#{remote_addr}:#{remote_port} disconnected"
     
-    # lets do some cleanup
-    # @buffer.clear unless @buffer.empty?
-    # @buffer = nil
-    
     if @backend
       @backend.close unless @backend.closed?
       @backend = nil
@@ -93,7 +89,7 @@ class BrowserRequest < Rev::TCPSocket
       }
     end
     
-    @backend.write(data)
+    @backend.write(data) unless @backend.closed?
     
     data = nil
   end

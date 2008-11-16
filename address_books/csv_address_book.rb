@@ -6,6 +6,6 @@ class AddressBook
   end
   
   def lookup_addresses(data)
-    return [{:host => 'localhost', :port => 3000}]
+    return [{:host => 'localhost', :port => 80}]
   end
 end
