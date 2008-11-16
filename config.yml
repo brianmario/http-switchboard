@@ -1,0 +1,9 @@
+panel:
+    name: eventmachine
+    options:
+        addr: 0.0.0.0
+        port: 8000
+operator:
+    name: random
+address_book:
+    name: csv
