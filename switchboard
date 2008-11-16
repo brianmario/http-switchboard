@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+# See http://daemons.rubyforge.org/ for more info
+require 'rubygems'
+require 'daemons'
+
+Daemons.run(File.join(File.dirname(__FILE__),'switchboard.rb'),
+  :app_name => "switchboard",
+  :multiple => false,
+  :backtrace => true,
+  :monitor => true,
+  :log_output => true,
+  :dir_mode => :script,
+  :dir => "log"
+)
