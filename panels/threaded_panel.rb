@@ -4,7 +4,7 @@ require 'thread'
 require 'stringio'
 
 class BackendRequest
-  attr_accessor :read_callback
+  attr_accessor :frontend
   
   def initialize(sock)
     @socket = sock
@@ -15,7 +15,9 @@ class BackendRequest
     LOGGER.debug("Backend is connected, sending #{data.size} bytes of data")
     @socket.write(data)
     
-    read_callback.call(@socket.read) unless read_callback.nil?
+    while !@socket.eof?
+      @frontend.write(@socket.read_nonblock(8192)) unless @frontend.nil?
+    end
   end
   
   def closed?
@@ -25,6 +27,11 @@ class BackendRequest
   def close
     @socket.close
     @socket = nil
+    LOGGER.info("Backend connection closed")
+    
+    LOGGER.debug("Closing Browser connection if it's not already closed")
+    @frontend.close unless @frontend.closed?
+    @frontend = nil
   end
 end
 
@@ -33,6 +40,7 @@ class BrowserRequest
   
   def initialize(sock)
     @operator = Operator.new
+    
     @socket = sock
     LOGGER.info "#{@socket.peeraddr[3]}:#{@socket.peeraddr[1]} connected"
     
@@ -55,18 +63,19 @@ class BrowserRequest
       LOGGER.debug("Found jack: #{jack.inspect}. Establishing a connecting to it.")
       @backend = BackendRequest.new(TCPSocket.new(jack[:host], jack[:port]))
       
-      @backend.read_callback = proc { |d|
-        LOGGER.debug("Writing #{d.size} bytes back to the browser")
-        @socket.write(d)
-      }
+      @backend.frontend = self
     end
     
-    @backend.write(data)
-    close_connection
+    @backend.write(data) unless @backend.closed?
+    
     data = nil
   end
   
-  def close_connection
+  def write(data)
+    @socket.write(data)
+  end
+  
+  def close
     LOGGER.info "#{@socket.peeraddr[3]}:#{@socket.peeraddr[1]} disconnected"
     @socket.close
     
@@ -74,6 +83,9 @@ class BrowserRequest
       @backend.close unless @backend.closed?
       @backend = nil
     end
+    
+    # we probably don't want to do this...
+    GC.start
   end
 end
 

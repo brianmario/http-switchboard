@@ -5,7 +5,7 @@ require 'stringio'
 class BackendRequest < EventMachine::Connection
   include EM::Deferrable
   
-  attr_accessor :read_callback
+  attr_accessor :frontend
 
   def initialize(*args)
     super
@@ -28,10 +28,22 @@ class BackendRequest < EventMachine::Connection
     end
   end
 
+  def unbind
+    LOGGER.info("Backend connection closed")
+    @connected = false
+    
+    @buffer.truncate(0) unless @buffer.closed?
+    @buffer.close unless @buffer.closed?
+    @buffer = nil
+    
+    LOGGER.debug("Closing Browser connection if it's not already closed")
+    @frontend.close_connection_after_writing
+    @frontend = nil
+  end
+  
   def receive_data(data)
-    LOGGER.debug("Received #{data.size} bytes back from the backend")
-    #@raw_response << data
-    read_callback.call(data) unless read_callback.nil?
+    LOGGER.debug("Received #{data.size} bytes back from the backend, writing back to the browser")
+    @frontend.send_data(data)
     super
   end
   
@@ -44,19 +56,12 @@ class BackendRequest < EventMachine::Connection
       @buffer << data
     end
   end
-  
-  def unbind
-    LOGGER.info("Backend connection closed")
-    @connected = false
-    
-    @buffer.truncate(@buffer.size) unless @buffer.closed?
-    @buffer.close unless @buffer.closed?
-    @buffer = nil
-  end
+
 end
 
 class BrowserRequest < EventMachine::Connection
-
+  attr_reader :backend
+  
   def initialize
     @operator = Operator.new
     super
@@ -68,6 +73,18 @@ class BrowserRequest < EventMachine::Connection
     @peername = peername.join(".")+":"+peerport.to_s
     
     LOGGER.info "#{@peername} connected"
+  end
+  
+  def unbind
+    LOGGER.info "#{@peername} disconnected"
+    
+    if @backend
+      @backend.close_connection_after_writing
+      @backend = nil
+    end
+    
+    # we probably don't want to do this...
+    GC.start
   end
   
   def receive_data(data)
@@ -86,10 +103,7 @@ class BrowserRequest < EventMachine::Connection
       LOGGER.debug("Found jack: #{jack.inspect}. Establishing a connecting to it.")
       @backend = EM.connect(jack[:host], jack[:port], BackendRequest)
       
-      @backend.read_callback = proc { |d|
-        LOGGER.debug("Writing #{d.size} bytes back to the browser")
-        send_data(d)
-      }
+      @backend.frontend = self
     end
     
     @backend.send_data(data)
@@ -97,14 +111,20 @@ class BrowserRequest < EventMachine::Connection
     data = nil
   end
 
-  def unbind
-    LOGGER.info "#{@peername} disconnected"
-  end
 end
 
 class Panel
   def self.start(options)
     EM::run {
+      trap('INT') {
+        LOGGER.warn "ctrl+c caught, stopping server"
+        EM.stop_event_loop
+      }
+
+      trap ('SIGHUP') {
+        LOGGER.warn 'Hangup caught, restarting'
+      }
+      
       EM.epoll
       EM.start_server(options['addr'], options['port'], BrowserRequest)
       

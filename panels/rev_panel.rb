@@ -1,9 +1,8 @@
 require 'rubygems'
 require 'rev'
-# require 'rev/ssl'
 
 class BackendRequest < Rev::TCPSocket
-  attr_accessor :read_callback
+  attr_accessor :frontend
   
   def initialize(*args)
     super
@@ -16,7 +15,7 @@ class BackendRequest < Rev::TCPSocket
     @connected = true
     super
     
-    write(@buffer.read) if @buffer.size > 0
+    write(@buffer.read) if @buffer.size > 0 and !closed?
   end
   
   def on_close
@@ -25,12 +24,15 @@ class BackendRequest < Rev::TCPSocket
     
     @buffer.clear
     @buffer = nil
+    
+    LOGGER.debug("Closing Browser connection if it's not already closed")
+    @frontend.close unless @frontend.closed?
+    @frontend = nil
   end
 
   def on_read(data)
-    LOGGER.debug("Received #{data.size} bytes back from the backend")
-    #@raw_response << data
-    read_callback.call(data) unless read_callback.nil?
+    LOGGER.debug("Received #{data.size} bytes back from the backend, writing back to the browser")
+    @frontend.write(data) unless @frontend.closed?
     super
   end
   
@@ -55,7 +57,6 @@ class BrowserRequest < Rev::TCPSocket
   
   def on_connect
     LOGGER.info "#{remote_addr}:#{remote_port} connected"
-    # @buffer = Rev::Buffer.new
   end
 
   def on_close
@@ -65,28 +66,28 @@ class BrowserRequest < Rev::TCPSocket
       @backend.close unless @backend.closed?
       @backend = nil
     end
+    
+    # we probably don't want to do this...
+    GC.start
   end
 
   def on_read(data)
     LOGGER.debug("#{data.size} bytes of data received from browser")
     
-    if @backend.nil?
-      LOGGER.debug("Asking Operator for a jack")
+    if @backend.nil? || (!@backend.nil? && @backend.closed?)
+      LOGGER.info("Asking Operator for a jack")
       jack = @operator.lookup_jack(data)
       if jack.nil?
-        # TODO: tell browser there was a problem with proper response
-        LOGGER.debug("No jack found, closing browser connection (FIXME).")
+        # TODO: tell browser there was a problem with proper response code
+        LOGGER.error("No jack found, closing browser connection (FIXME).")
         close
         return
       end
       
-      LOGGER.debug("Found jack: #{jack.inspect}. Establishing a connecting to it.")
-      @backend = BackendRequest.connect(jack[:host], jack[:port]).attach(Rev::Loop.default)
+      LOGGER.info("Found jack: #{jack.inspect}. Connecting to it.")
+      @backend = BackendRequest.connect(jack[:host], jack[:port]).attach(Panel.rev_loop)
       
-      @backend.read_callback = proc { |d|
-        LOGGER.debug("Writing #{d.size} bytes back to the browser")
-        write(d)
-      }
+      @backend.frontend = self
     end
     
     @backend.write(data) unless @backend.closed?
@@ -95,36 +96,27 @@ class BrowserRequest < Rev::TCPSocket
   end
 end
 
-# NOTE: this doesn't work yet
-# class SslBrowserRequest < Rev::SSLSocket
-#   def on_connect
-#     LOGGER.debug('new ssl connection')
-#   end
-#   
-#   def on_ssl_connect
-#     LOGGER.debug('ssl connection established')
-#   end
-#   
-#   def on_peer_cert(peer_cert)
-#     LOGGER.debug('ssl peer cert received: '+peer_cert.inspect)
-#   end
-#   
-#   def on_ssl_result(result)
-#     LOGGER.debug('ssl handshaking completed successfully: '+result.inspect)
-#   end
-#   
-#   def on_ssl_error(exception)
-#     LOGGER.debug('ssl error: '+exception.inspect)
-#   end
-# end
-
 class Panel
+  def self.rev_loop
+    @@rev_loop
+  end
+  
   def self.start(options)
+    @@rev_loop = Rev::Loop.new(:backend => [:epoll, :kqueue])
+    
+    trap('INT') {
+      LOGGER.warn "ctrl+c caught, stopping server"
+      @rev_loop.stop
+    }
+    
+    trap ('SIGHUP') {
+      LOGGER.warn 'Hangup caught, restarting'
+    }
+    
     server = Rev::TCPServer.new(options['host'], options['port'], BrowserRequest)
-    #server = Rev::TCPServer.new('localhost', PORT, SslBrowserRequest)
-    server.attach(Rev::Loop.default)
+    server.attach(@@rev_loop)
 
     LOGGER.info "Rev panel listening on #{options['host']}:#{options['port']}"
-    Rev::Loop.default.run
+    @@rev_loop.run
   end
 end

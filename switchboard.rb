@@ -1,3 +1,4 @@
+require 'rubygems'
 require 'yaml'
 require 'logger'
 
@@ -12,4 +13,12 @@ require "panels/#{CONFIG['panel']['name']}_panel.rb"
 require "operators/#{CONFIG['operator']['name']}_operator.rb"
 require "address_books/#{CONFIG['address_book']['name']}_address_book.rb"
 
-Panel.start(CONFIG['panel']['options'])
+LOGGER.debug("Attempting to set max connections to: #{CONFIG['panel']['max_connections'].to_i}")
+Process.setrlimit(Process::RLIMIT_NOFILE, CONFIG['panel']['max_connections'].to_i, Process::RLIM_INFINITY)
+LOGGER.info("Max connections to: #{CONFIG['panel']['max_connections'].to_i}")
+
+begin
+  Panel.start(CONFIG['panel']['options'])
+rescue Exception => e
+  LOGGER.fatal e.inspect
+end
