@@ -1,0 +1,67 @@
+Switchboard
+===========
+Switchboard is an http proxy, that does dynamic routing based on information contained in the request.
+It follows the concepts of an analog phone switchboard in that it uses Panels, Operators and AddressBooks to determine
+how to route/proxy http requests to any number of backend servers.
+This is done at the _TCP_ level, and will do only the minimal amount of processing required to determine a [set of] host[s]
+to use for the backend.
+
+Panels
+------
+A Panel is the engine which does the actual routing of the proxied data. Currently, Switchboard supports a Rev-based Panel
+and an EventMachine-based Panel. A regularly Threaded Panel is in the works (with ruby 1.9/jruby in mind of course).
+This of course could be extended to support a multitude of different Panels, each using their own core engine to drive
+the routing of the data. My goal here was so you would have a choice of which would best fit your needs, depending on your
+environment and scaling requirements.
+A Panel only needs to implement a single class-method called "start" which accepts a hash of options previously defined
+in config.yml for it.
+
+Operators
+---------
+An Operator is in charge of finding a "jack" for a backend connection. It only needs to implement a single instance-method
+called "find_jack" which accepts a single parameter containing arbitrary data from the incoming request (NOTE: this may change soon to only include headers),
+and should return a single hash with :host and :port keys.
+An Operator is also in charge of the load-balancing algorithm. Currently, since I'm still fleshing out it's API - 
+Switchboard only uses a single AddressBook that returns a 'random' host/port combo with no real load balancing in mind.
+
+AddressBook
+-----------
+An AddressBook is in charge of finding an array of hosts the current request is qualified to connect to. It must at least
+implement an instance-method called "find_addresses" which accepts a single parameter containing arbitrary data from the incoming request,
+and should return an array (even if only a single host was determined usable) of hashes, each containing :host and :port keys.
+
+
+An Example Request life-cycle
+-----------------------------
+Assume request_data="GET /accounts HTTP/1.1...Host: subscriber1.mysite.com"
+
+Web Browser -> request_data -> SB
+The web browser makes a request which hits the Switchboard
+
+SBPanel -> SBOperator.find_jack(request_data)
+The Switchboard Panel asks it's Operator to find a jack, based on the request data
+
+SBOperator -> SBAddressBook.find_addresses(request_data)
+The Switchboard's Operator asks it's AddressBook for a list of potential backend servers
+
+SBAddressBook -> [{:host => 'v1-1-6.backends.mysite.com', :port => 3000},
+                {:host => 'v1-1-6.backends.mysite.com', :port => 3001},
+                {:host => 'v1-1-6.backends.mysite.com', :port => 3002}] -> SBOperator
+The Switchboard's AddressBook determines that this request is allowed to connect to the above listed backends, and hands
+the list back to the Operator who requested them.
+In this case, it's determined from the "Host" header, specifically the sub-domain. This AddressBook might look this up
+in a flat file, a csv or even a database.
+                
+SBOperator -> {:host => 'v1-1-6.backends.mysite.com', :port => 3001} -> SBPanel
+The Operator, now with a list of potential backends to connect to, makes a determination of which single address to hand
+back to the Panel to use. This may be determined at random, round-robin or fair load-balanced. This is the job of the Operator.
+
+SBPanel -> request_data -> {:host => 'v1-1-6.backends.mysite.com', :port => 3001}
+The Operator handed back a single backend host to connect to, so the Panel goes ahead and makes a connection to it, streaming
+the original (unmodified) request to it.
+
+{:host => 'v1-1-6.backends.mysite.com', :port => 3001} -> response_data -> SBPanel
+At this point, the backend has responded back to the Panel
+
+SBPanel -> response_data -> Web Browser
+Finally, the Panel streams the (unmodified) backend request payload back to the browser.
