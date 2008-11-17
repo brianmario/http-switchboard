@@ -1,5 +1,5 @@
 panel:
-    name: rev
+    name: eventmachine
     max_connections: 1024
     options:
         addr: 0.0.0.0

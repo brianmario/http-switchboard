@@ -93,17 +93,15 @@ class Panel
   def self.start(options)
     server = TCPServer.new(options['port'])
     LOGGER.info "Threaded panel listening on #{options['host']}:#{options['port']}"
-    while true
-      begin
-        sock = server.accept_nonblock
-        thread = Thread.start {
-          BrowserRequest.new(sock)
-        }
-        thread.join
-      rescue Errno::EAGAIN, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINTR
-        IO.select([server])
-        retry
-      end
+    begin
+      sock = server.accept_nonblock
+      thread = Thread.start {
+        BrowserRequest.new(sock)
+      }
+      thread.join
+    rescue Errno::EAGAIN, Errno::ECONNABORTED, Errno::EPROTO, Errno::EINTR
+      IO.select([server])
+      retry
     end
   end
 end
