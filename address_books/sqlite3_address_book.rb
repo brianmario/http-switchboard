@@ -5,9 +5,7 @@ require 'sqlite3' # gem install sqlite3-ruby
 class AddressBook
   include Singleton
   
-  def initialize
-    @mutex = Mutex.new
-  end
+  @@mutex = Mutex.new
   
   def configure(config)
     @db = SQLite3::Database.new(config['database'])
@@ -22,7 +20,7 @@ class AddressBook
     # req_host = data['host']
     # @db.execute(@query, req_host)
     servers = []
-    @mutex.synchronize {
+    @@mutex.synchronize {
       @db.execute(@query) do |row|
         servers << {:host => row[0], :port => row[1]}
       end

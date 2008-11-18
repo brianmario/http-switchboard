@@ -106,7 +106,9 @@ class Panel
     
     trap('INT') {
       LOGGER.warn "ctrl+c caught, stopping server"
-      @rev_loop.stop
+      @@rev_loop.stop unless @@rev_loop.nil? # in case ctrl+c happens twice before we're exited
+      @@rev_loop = nil
+      return;
     }
     
     trap ('SIGHUP') {

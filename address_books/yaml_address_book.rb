@@ -5,9 +5,10 @@ require 'yaml'
 class AddressBook
   include Singleton
   
+  @@mutex = Mutex.new
+  
   def initialize
     @servers = []
-    @mutex = Mutex.new
   end
   
   def configure(config)

@@ -23,4 +23,5 @@ begin
   Panel.start(CONFIG['panel']['options'])
 rescue Exception => e
   LOGGER.fatal e.inspect
+  LOGGER.fatal e.backtrace.join("\r\n")
 end
