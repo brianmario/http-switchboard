@@ -5,7 +5,7 @@ panel:
         addr: 0.0.0.0
         port: 8000
 operator:
-    name: random
+    name: round_robin
     options:
 address_book:
     name: csv
