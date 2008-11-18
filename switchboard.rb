@@ -18,6 +18,8 @@ Process.setrlimit(Process::RLIMIT_NOFILE, CONFIG['panel']['max_connections'].to_
 LOGGER.info("Max connections to: #{CONFIG['panel']['max_connections'].to_i}")
 
 begin
+  AddressBook.instance.configure(CONFIG['address_book']['options'])
+  Operator.instance.configure(CONFIG['operator']['options'])
   Panel.start(CONFIG['panel']['options'])
 rescue Exception => e
   LOGGER.fatal e.inspect

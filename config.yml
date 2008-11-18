@@ -1,10 +1,13 @@
 panel:
-    name: eventmachine
+    name: rev
     max_connections: 1024
     options:
         addr: 0.0.0.0
         port: 8000
 operator:
     name: random
+    options:
 address_book:
     name: csv
+    options:
+        file: "examples/servers.csv"

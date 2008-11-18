@@ -1,6 +1,6 @@
 require 'singleton'
 require 'thread'
-require 'csv'
+require 'yaml'
 
 class AddressBook
   include Singleton
@@ -11,8 +11,9 @@ class AddressBook
   end
   
   def configure(config)
-    CSV.open(config['file']) do |row|
-      @servers << {:host => row[1], :port => row[2].to_i}
+    servers = YAML.load_file(config['file'])
+    servers.each do |server|
+      @servers << server
     end
   end
   

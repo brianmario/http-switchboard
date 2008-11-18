@@ -51,7 +51,7 @@ class BrowserRequest < Rev::TCPSocket
   attr_reader :backend
   
   def initialize(*args)
-    @operator = Operator.new
+    @operator = Operator.instance
     super
   end
   
@@ -111,11 +111,21 @@ class Panel
     
     trap ('SIGHUP') {
       LOGGER.warn 'Hangup caught, restarting'
+      # TODO: reload config
+      # tell AddressBook and Operator to reconfigure themselves based on the "new" config
     }
     
     server = Rev::TCPServer.new(options['host'], options['port'], BrowserRequest)
     server.attach(@@rev_loop)
-
+    
+    # timer = Rev::TimerWatcher.new(5, true)
+    # timer.instance_eval do
+    #   def on_timer
+    #     LOGGER.info("This will check for failed backends, and attempt to bring them back online")
+    #   end
+    # end
+    # timer.attach(@@rev_loop)
+    
     LOGGER.info "Rev panel listening on #{options['host']}:#{options['port']}"
     @@rev_loop.run
   end

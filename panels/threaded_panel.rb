@@ -39,7 +39,7 @@ class BrowserRequest
   attr_reader :backend
   
   def initialize(sock)
-    @operator = Operator.new
+    @operator = Operator.instance
     
     @socket = sock
     LOGGER.info "#{@socket.peeraddr[3]}:#{@socket.peeraddr[1]} connected"

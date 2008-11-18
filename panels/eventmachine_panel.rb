@@ -63,7 +63,7 @@ class BrowserRequest < EventMachine::Connection
   attr_reader :backend
   
   def initialize
-    @operator = Operator.new
+    @operator = Operator.instance
     super
   end
   
