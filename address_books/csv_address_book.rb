@@ -11,9 +11,11 @@ class AddressBook
   end
   
   def configure(config)
-    CSV.open(config['file']) do |row|
-      @servers << {:host => row[1], :port => row[2].to_i}
-    end
+    @mutex.synchronize {
+      CSV.open(config['file']) do |row|
+        @servers << {:host => row[1], :port => row[2].to_i}
+      end
+    }
   end
   
   # this method should return an array of hosts which this request is qualified to connect to.

@@ -1,5 +1,5 @@
 require 'rubygems'
-require 'rev'
+require 'rev' # gem install rev
 
 class BackendRequest < Rev::TCPSocket
   attr_accessor :frontend

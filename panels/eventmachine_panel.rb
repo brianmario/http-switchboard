@@ -1,5 +1,5 @@
 require 'rubygems'
-require 'eventmachine'
+require 'eventmachine' # gem install eventmachine
 require 'stringio'
 
 class BackendRequest < EventMachine::Connection
