@@ -1,13 +1,11 @@
-Switchboard
-===========
+= Switchboard
 Switchboard is an http proxy, that does dynamic routing based on information contained in the request.
 It follows the concepts of an analog phone switchboard in that it uses Panels, Operators and AddressBooks to determine
 how to route/proxy http requests to any number of backend servers.
 This is done at the _TCP_ level, and will do only the minimal amount of processing required to determine a [set of] host[s]
 to use for the backend.
 
-Panels
-------
+== Panels
 A Panel is the engine which does the actual routing of the proxied data. Currently, Switchboard supports a Rev-based Panel
 and an EventMachine-based Panel. A regularly Threaded Panel is in the works (with ruby 1.9/jruby in mind of course).
 This of course could be extended to support a multitude of different Panels, each using their own core engine to drive
@@ -16,23 +14,20 @@ environment and scaling requirements.
 A Panel only needs to implement a single class-method called "start" which accepts a hash of options previously defined
 in config.yml for it.
 
-Operators
----------
+== Operators
 An Operator is in charge of finding a "jack" for a backend connection. It only needs to implement a single instance-method
 called "find_jack" which accepts a single parameter containing arbitrary data from the incoming request (NOTE: this may change soon to only include headers),
 and should return a single hash with :host and :port keys.
 An Operator is also in charge of the load-balancing algorithm. Currently, since I'm still fleshing out it's API - 
 Switchboard only uses a single AddressBook that returns a 'random' host/port combo with no real load balancing in mind.
 
-AddressBook
------------
+== AddressBook
 An AddressBook is in charge of finding an array of hosts the current request is qualified to connect to. It must at least
 implement an instance-method called "find_addresses" which accepts a single parameter containing arbitrary data from the incoming request,
 and should return an array (even if only a single host was determined usable) of hashes, each containing :host and :port keys.
 
 
-An Example Request life-cycle
------------------------------
+== An Example Request life-cycle
 Assume request_data="GET /accounts HTTP/1.1...Host: subscriber1.mysite.com"
 
   Web Browser -> request_data -> SB
