@@ -35,16 +35,16 @@ An Example Request life-cycle
 -----------------------------
 Assume request_data="GET /accounts HTTP/1.1...Host: subscriber1.mysite.com"
 
- Web Browser -> request_data -> SB
+  Web Browser -> request_data -> SB
 The web browser makes a request which hits the Switchboard
 
- SBPanel -> SBOperator.find_jack(request_data)
+  SBPanel -> SBOperator.find_jack(request_data)
 The Switchboard Panel asks it's Operator to find a jack, based on the request data
 
- SBOperator -> SBAddressBook.find_addresses(request_data)
+  SBOperator -> SBAddressBook.find_addresses(request_data)
 The Switchboard's Operator asks it's AddressBook for a list of potential backend servers
 
- SBAddressBook -> [{:host => 'v1-1-6.backends.mysite.com', :port => 3000},
+  SBAddressBook -> [{:host => 'v1-1-6.backends.mysite.com', :port => 3000},
                 {:host => 'v1-1-6.backends.mysite.com', :port => 3001},
                 {:host => 'v1-1-6.backends.mysite.com', :port => 3002}] -> SBOperator
 The Switchboard's AddressBook determines that this request is allowed to connect to the above listed backends, and hands
@@ -52,15 +52,15 @@ the list back to the Operator who requested them.
 In this case, it's determined from the "Host" header, specifically the sub-domain. This AddressBook might look this up
 in a flat file, a csv or even a database.
                 
-SBOperator -> {:host => 'v1-1-6.backends.mysite.com', :port => 3001} -> SBPanel
+  SBOperator -> {:host => 'v1-1-6.backends.mysite.com', :port => 3001} -> SBPanel
 The Operator, now with a list of potential backends to connect to, makes a determination of which single address to hand
 back to the Panel to use. This may be determined at random, round-robin or fair load-balanced. This is the job of the Operator.
 
-SBPanel -> request_data -> {:host => 'v1-1-6.backends.mysite.com', :port => 3001}
+  SBPanel -> request_data -> {:host => 'v1-1-6.backends.mysite.com', :port => 3001}
 The Operator handed back a single backend host to connect to, so the Panel goes ahead and makes a connection to it, streaming
 the original (unmodified) request to it.
 
-{:host => 'v1-1-6.backends.mysite.com', :port => 3001} -> response_data -> SBPanel
+  {:host => 'v1-1-6.backends.mysite.com', :port => 3001} -> response_data -> SBPanel
 At this point, the backend has responded back to the Panel
 
 SBPanel -> response_data -> Web Browser
