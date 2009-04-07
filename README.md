@@ -35,16 +35,16 @@ An Example Request life-cycle
 -----------------------------
 Assume request_data="GET /accounts HTTP/1.1...Host: subscriber1.mysite.com"
 
-Web Browser -> request_data -> SB
+ Web Browser -> request_data -> SB
 The web browser makes a request which hits the Switchboard
 
-SBPanel -> SBOperator.find_jack(request_data)
+ SBPanel -> SBOperator.find_jack(request_data)
 The Switchboard Panel asks it's Operator to find a jack, based on the request data
 
-SBOperator -> SBAddressBook.find_addresses(request_data)
+ SBOperator -> SBAddressBook.find_addresses(request_data)
 The Switchboard's Operator asks it's AddressBook for a list of potential backend servers
 
-SBAddressBook -> [{:host => 'v1-1-6.backends.mysite.com', :port => 3000},
+ SBAddressBook -> [{:host => 'v1-1-6.backends.mysite.com', :port => 3000},
                 {:host => 'v1-1-6.backends.mysite.com', :port => 3001},
                 {:host => 'v1-1-6.backends.mysite.com', :port => 3002}] -> SBOperator
 The Switchboard's AddressBook determines that this request is allowed to connect to the above listed backends, and hands
