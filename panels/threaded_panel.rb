@@ -8,15 +8,17 @@ class BackendRequest
   
   def initialize(sock)
     @socket = sock
+    @buffer = StringIO.new
     LOGGER.info "Backend connection to #{@socket.peeraddr[3]}:#{@socket.peeraddr[1]} opened"
   end
   
   def write(data)
     LOGGER.debug("Backend is connected, sending #{data.size} bytes of data")
-    @socket.write(data)
+    @socket.write_nonblock(data)
     
     while !@socket.eof?
-      @frontend.write(@socket.read_nonblock(8192)) unless @frontend.nil?
+      @socket.read_nonblock(8192, @buffer)
+      @frontend.write(@buffer) unless @frontend.nil?
     end
   end
   
@@ -39,12 +41,14 @@ class BrowserRequest
   attr_reader :backend
   
   def initialize(sock)
+    @buffer = StringIO.new
     @operator = Operator.instance
     
     @socket = sock
     LOGGER.info "#{@socket.peeraddr[3]}:#{@socket.peeraddr[1]} connected"
     
-    read_data(@socket.read_nonblock(8192))
+    @socket.read_nonblock(8192, @buffer)
+    read_data(@buffer)
   end
   
   def read_data(data)
@@ -72,7 +76,7 @@ class BrowserRequest
   end
   
   def write(data)
-    @socket.write(data)
+    @socket.write_nonblock(data)
   end
   
   def close
