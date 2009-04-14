@@ -1,6 +1,14 @@
 require 'rubygems'
 require 'rev' # gem install rev
 
+class ConnectionTimeout < Rev::TimerWatcher
+  def initialize(interval, repeating, &timeout) 
+    @timeout = timeout
+    super(interval, repeating)
+  end
+  def on_timer; @timeout.call() end
+end
+
 class BackendRequest < Rev::TCPSocket
   attr_accessor :frontend
   
@@ -8,6 +16,11 @@ class BackendRequest < Rev::TCPSocket
     super
     @buffer = Rev::Buffer.new
     @connected = false
+    @timer = ConnectionTimeout.new(Panel::CONNECT_TIMEOUT, repeating=false) {
+      LOGGER.info "Backend connection timeout, disconnecting"
+      on_close unless @connected 
+    }
+    @timer.attach(Panel.rev_loop)
   end
   
   def on_connect
@@ -22,7 +35,7 @@ class BackendRequest < Rev::TCPSocket
     LOGGER.info("Backend connection closed")
     @connected = false
     
-    @buffer.clear
+    @buffer.clear unless @buffer.nil?
     @buffer = nil
     
     LOGGER.debug("Closing Browser connection if it's not already closed")
@@ -94,6 +107,8 @@ class BrowserRequest < Rev::TCPSocket
 end
 
 class Panel
+  CONNECT_TIMEOUT = 4
+  
   def self.rev_loop
     @@rev_loop
   end
