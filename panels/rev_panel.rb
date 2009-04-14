@@ -66,9 +66,6 @@ class BrowserRequest < Rev::TCPSocket
       @backend.close unless @backend.closed?
       @backend = nil
     end
-    
-    # we probably don't want to do this...
-    GC.start
   end
 
   def on_read(data)

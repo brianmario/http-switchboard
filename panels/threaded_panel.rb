@@ -83,9 +83,6 @@ class BrowserRequest
       @backend.close unless @backend.closed?
       @backend = nil
     end
-    
-    # we probably don't want to do this...
-    GC.start
   end
 end
 

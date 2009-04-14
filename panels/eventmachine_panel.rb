@@ -82,9 +82,6 @@ class BrowserRequest < EventMachine::Connection
       @backend.close_connection_after_writing
       @backend = nil
     end
-    
-    # we probably don't want to do this...
-    GC.start
   end
   
   def receive_data(data)
